@@ -36,3 +36,13 @@ impl<T> MyBox<T> {
     }
 }
 ```
+
+### Parameters
+#### Turbofish
+```rust
+fn main() {
+    let s = "Hello, World!";
+// ::<String> is called turbofish- used to tell rust what type this function should be converted into
+    let string = s.into::<String>();
+}
+```
