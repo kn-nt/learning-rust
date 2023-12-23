@@ -1,5 +1,31 @@
 # learning-rust
 
+### QoL
+#### Cargo Watch
+```powershell
+cargo install cargo-watch
+cargo watch -q -c -w src/ -x 'run'
+cargo watch -q -c -w src/ -x 'test'
+```
+
+#### Cargo Watch Alias
+```powershell
+# Using notepad popup below, place script within
+notepad $profile
+
+function cargoWatchR {
+    cargo watch -q -c -w src/ -x 'run'
+}
+
+function cargoWatchT {
+    cargo watch -q -c -w src/ -x 'run'
+}
+
+New-Alias cwr cargoWatchR
+New-Alias cwt cargoWatchT
+
+# enable ps scripts in windows
+```
 
 ### Traits
 #### Derive vs Impl traits  
