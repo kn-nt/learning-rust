@@ -18,7 +18,7 @@ function cargoWatchR {
 }
 
 function cargoWatchT {
-    cargo watch -q -c -w src/ -x 'run'
+    cargo watch -q -c -w src/ -x 'test'
 }
 
 New-Alias cwr cargoWatchR
