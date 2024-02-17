@@ -21,8 +21,18 @@ function cargoWatchT {
     cargo watch -q -c -w src/ -x 'test'
 }
 
+function cargoRun {
+    cargo run
+}
+
+function wasmPackWeb {
+    wasm-pack build --target web
+}
+
 New-Alias cwr cargoWatchR
 New-Alias cwt cargoWatchT
+New-Alias cr cargoRun
+New-Alias wpw wasmPackWeb
 
 # enable ps scripts in windows
 ```
