@@ -87,3 +87,11 @@ fn main() {
     let string = s.into::<String>();
 }
 ```
+
+
+#### Windows + WSL
+Need to install this before being able to build anything
+```zsh
+sudo apt-get update
+sudo apt install build-essential libssl-dev pkg-config
+```
