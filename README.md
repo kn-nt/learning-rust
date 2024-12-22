@@ -39,6 +39,12 @@ Set-Alias cwtp cargoWatchTP
 New-Alias cr cargoRun
 New-Alias wpw wasmPackWeb
 
+if (!(Get-Service ssh-agent | ? {$_.Status -eq 'Running'})) {
+    Start-Service ssh-agent
+}
+
+ssh-add
+
 # enable ps scripts in windows
 ```
 
