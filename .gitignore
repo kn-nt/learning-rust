@@ -1,2 +1,3 @@
-/websocket/*/target/
+target/
 .idea
+pkg/
