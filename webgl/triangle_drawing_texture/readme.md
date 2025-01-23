@@ -1,2 +1,10 @@
 TODO:
-finish `draw_triangle_at_coords_instanced_optimized` by moving the tex image 2d outside the constant loop as well as the other buffer data calls
+Get switching between textures working
+
+
+### Questions unanswered:  
+Q: what is the best way to manage multiple textures?  
+A: seems like its still to use multiple textures (texture0, texture1)  
+
+Q: how do i draw multiple things at the same time without having to re-upload?  
+A: same as above - just need to switch between the textures, bind the right webgltexture, draw and repeat

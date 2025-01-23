@@ -112,13 +112,6 @@ pub async unsafe fn main() {
     }
     ws.close().unwrap();
 
-    // removes program above as the shader for instanced drawing is slightly different
-    // can do dynamically generated GLSL but eh whatever
-    if constants::INSTANCED_DRAW {
-        gl.delete_program(Some(&program));
-        program = setup_instanced_program(&gl);
-    }
-
     // FPS Counter in HTML https://webgl2fundamentals.org/webgl/lessons/webgl-text-html.html
     let fps_ele = document.query_selector("#fps").unwrap().unwrap();
     let fps_text = document.create_text_node("");
@@ -129,6 +122,9 @@ pub async unsafe fn main() {
         .unwrap();
     let draw_calls_text = gloo_utils::document().create_text_node("");
     let draw_calls_node = draw_calls_ele.append_child(&**draw_calls_text).unwrap();
+    let msg_ele = document.query_selector("#msg").unwrap().unwrap();
+    let msg_text = document.create_text_node("");
+    let msg_node = msg_ele.append_child(&**msg_text).unwrap();
 
     let mut fps_timing: VecDeque<f64> = VecDeque::new();
     let mut draw_calls: u32 = 0u32;
@@ -176,6 +172,7 @@ pub async unsafe fn main() {
     let min = 1f32;
     let f_max = 2000f32;
     let mut bytes = [0u8; 1000 * 4]; // 500 f32 values, each 4 bytes
+    let mut bytes_smol = [0u8; 2 * 4]; // 500 f32 values, each 4 bytes
     getrandom(&mut bytes).expect("random number generation failed");
     let coords: Vec<f32> = bytes
         .chunks_exact(1) // Each chunk represents one f32 (4 bytes)
@@ -189,8 +186,17 @@ pub async unsafe fn main() {
     print(&format!("{:?}", coords));
     print(&format!("{:?}", &coords[0..2]));
 
-    let buf_vert = setup_all_buffers(&gl, &program, &coords, w, h, &bitmap, origin);
+
+    // removes program above as the shader for instanced drawing is slightly different
+    // can do dynamically generated GLSL but eh whatever
+    if constants::INSTANCED_DRAW {
+        gl.delete_program(Some(&program));
+        program = setup_instanced_program(&gl);
+    }
+    let (buf_vert, texture) = setup_all_buffers(&gl, &program, w, h, &bitmap, origin);
     let buf_insta = setup_inst_buffer(&gl, &program, &coords);
+
+    let other_tex = setup_tex2(&gl);
 
     // Below allows transparency to work
     // http://learnwebgl.brown37.net/11_advanced_rendering/alpha_blending.html
@@ -203,6 +209,8 @@ pub async unsafe fn main() {
     // Lessons learned so far
     // Make sure to not constantly upload textures to buffer otherwise you run into memory issues
     //      VRAM was full -> spilled into RAM
+    // Make sure to set uniform calls before draw every time or at least once per draw time
+    //      It is set up per program and doesn't change by default
     *g.borrow_mut() = Some(Closure::new(move || {
         let now = now();
         while fps_timing.len() > 0 && *fps_timing.get(0).unwrap() <= now - 1000.0 {
@@ -210,12 +218,6 @@ pub async unsafe fn main() {
         }
         fps_timing.push_back(now);
         fps_node.set_node_value(Some(&fps_timing.len().to_string()));
-        // let mut prefix = "SINGLE";
-        // if constants::INSTANCED_DRAW {
-        //     prefix = "INSTANCED";
-        // }
-        // draw_calls_node.set_node_value(Some(&format!("{} {}", prefix, &draw_calls.to_string())));
-        draw_calls_node.set_node_value(Some(&format!("{}", &draw_calls.to_string())));
         draw_calls = 0;
         gl.clear(
             WebGl2RenderingContext::COLOR_BUFFER_BIT | WebGl2RenderingContext::DEPTH_BUFFER_BIT,
@@ -248,8 +250,19 @@ pub async unsafe fn main() {
             
             // }
         } else {
-            for _ in 0..(250f32 * pct * 2f32) as u32 {
-                draw_triangle_at_coords_optimized(&gl, &coords[..2], &buf_vert, w, h, origin);
+            getrandom(&mut bytes).expect("random number generation failed");
+
+            let coords: Vec<f32> = bytes
+                .chunks_exact(1) // Each chunk represents one f32 (4 bytes)
+                .map(|chunk| {
+                    let num = chunk[0];
+                    let normalized = num as f32 / u8::MAX as f32;
+                    min + ((f_max - min) * normalized)
+                })
+                .collect();
+            for i in 0..(500f32 * pct) as u32 {
+                draw_triangle_at_coords_optimized(&gl, &coords[(i as usize)..(i as usize)+2], &program, &buf_vert, w, h, origin);
+                // upload_tex(&gl, &texture, w, h, &bitmap);
                 draw_calls += 1;
             }
             // for _ in 0..(250f32 * pct * 2f32) as u32 {
@@ -257,6 +270,20 @@ pub async unsafe fn main() {
             //     draw_calls += 1;
             // }
         }
+
+
+        if pct > 100.0 {
+            set_active_tex(&gl, WebGl2RenderingContext::TEXTURE0, &texture);
+        } else {
+            set_active_tex(&gl, WebGl2RenderingContext::TEXTURE1, &other_tex);
+        }
+
+        msg_node.set_node_value(Some(&format!("{} {}", pct, WebGl2RenderingContext::ACTIVE_TEXTURE)));
+        let mut prefix = "SINGLE";
+        if constants::INSTANCED_DRAW {
+            prefix = "INSTANCED";
+        }
+        draw_calls_node.set_node_value(Some(&format!("{} {}", prefix, &draw_calls.to_string())));
 
         // draw_triangle_at_coords_instanced(&gl, &program_i, &[0.0, 0.0, 400.0, 400.0, 500.0, 200.0]);
         request_animation_frame(f.borrow().as_ref().unwrap());
@@ -330,15 +357,95 @@ pub fn setup_instanced_program(gl: &WebGl2RenderingContext) -> WebGlProgram {
     link_program(&gl, &shader_v, &shader_f).unwrap()
 }
 
+pub fn upload_tex(gl: &WebGl2RenderingContext, tex: &WebGlTexture, w: u16, h: u16, bitmap: &[u8]) {
+    // gl.active_texture(WebGl2RenderingContext::TEXTURE0);
+    gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&tex));
+    gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
+        constants::TARGET,
+        constants::LEVEL,
+        constants::INTERNAL_FORMAT,
+        w as i32,
+        h as i32,
+        constants::BORDER,
+        constants::SRC_FORMAT,
+        constants::SRC_TYPE,
+        Some(&bitmap),
+    )
+        .expect("Cannot generate tex");
+}
+
+pub fn setup_tex2(gl: &WebGl2RenderingContext) -> WebGlTexture {
+    let bitmap: Vec<u8>;
+    let w: u16;
+    let h: u16;
+    let mut origin: (f32, f32) = (0.0, 0.0);
+    let node = COMPLETE_HASH_MAP.get().unwrap().read().unwrap();
+    // print(&format!("{:?}", node.children["UI.nx"].children["MapLogin.img"].children.keys()));
+    // print(&format!("{:?}", node.children["Map.nx"].children["Obj"].children["login.img"].children["Title"].children["signboard"].children["0"].children.keys()));
+    let signboard_node = &node.children["Map.nx"].children["Obj"].children["login.img"].children
+        ["WorldSelect"]
+        .children["signboard"]
+        .children["0"]
+        .children["0"];
+    match signboard_node.data {
+        NodeDataPopulated::Bitmap {
+            data: _,
+            width,
+            height,
+        } => {
+            bitmap = signboard_node.data.decompress().unwrap();
+            w = width.clone(); // 368 px
+            h = height.clone(); // 236 px
+        }
+        _ => {
+            panic!("Signboard node is not populated");
+        }
+    }
+
+    match signboard_node.children["origin"].data {
+        NodeDataPopulated::Vector(x, y) => {
+            origin.0 = x as f32;
+            origin.1 = y as f32;
+        }
+        _ => {
+            panic!("Missing origin");
+        }
+    }
+    gl.active_texture(WebGl2RenderingContext::TEXTURE1);
+
+    let tex = gl.create_texture().unwrap();
+
+    gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&tex));
+    gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
+        constants::TARGET,
+        constants::LEVEL,
+        constants::INTERNAL_FORMAT,
+        w as i32,
+        h as i32,
+        constants::BORDER,
+        constants::SRC_FORMAT,
+        constants::SRC_TYPE,
+        Some(&bitmap),
+    )
+        .expect("Cannot generate tex");
+
+    tex
+}
+
+pub fn set_active_tex(gl: &WebGl2RenderingContext, texture: u32, gl_tex: &WebGlTexture) {
+    gl.active_texture(texture);
+    gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(gl_tex));
+}
+
+/// This is test code to see if it causes lag- and it does!
 pub fn setup_all_buffers(
     gl: &WebGl2RenderingContext,
     program: &WebGlProgram,
-    coords: &[f32],
     w: u16,
     h: u16,
     bitmap: &[u8],
     origin: (f32, f32),
-) -> WebGlBuffer {
+) -> (WebGlBuffer, WebGlTexture) {
     // Calculated vertices
     // Definitions
     //     Origin: the center/ starting point for the texture to be drawn
@@ -432,6 +539,7 @@ pub fn setup_all_buffers(
 
     gl.use_program(Some(&program));
 
+    gl.active_texture(WebGl2RenderingContext::TEXTURE0);
     // Create texture object to hold the actual texture data
     let texture = gl.create_texture().expect("Cannot create gl texture");
     // Binds texture object to TEXTURE_2D (binding point)
@@ -461,7 +569,7 @@ pub fn setup_all_buffers(
     )
         .expect("Cannot generate tex");
 
-    buf_vert
+    (buf_vert, texture)
 }
 pub fn setup_inst_buffer(
     gl: &WebGl2RenderingContext,
@@ -513,7 +621,8 @@ pub fn draw_triangle_at_coords_instanced_optimized(
 
     // print(&format!("{:?}", signboard_node.children.keys()));
     let u_canvas_size = gl.get_uniform_location(program, "u_canvas_size").unwrap();
-
+    // Needs to be set once per program normally but we are updating it actively because resolution my change
+    // Need to move this to vertex buffer
     gl.uniform2f(Some(&u_canvas_size), canvas_w, canvas_h);
 
     gl.bind_buffer(
@@ -540,11 +649,20 @@ pub fn draw_triangle_at_coords_instanced_optimized(
 pub fn draw_triangle_at_coords_optimized(
     gl: &WebGl2RenderingContext,
     coords: &[f32],
+    program: &WebGlProgram,
     buf_vertex: &WebGlBuffer,
     w: u16,
     h: u16,
     origin: (f32, f32)
 ) {
+    let canvas = gl
+        .canvas()
+        .unwrap()
+        .dyn_into::<HtmlCanvasElement>()
+        .unwrap();
+    let canvas_h: f32 = canvas.client_height() as f32;
+    let canvas_w: f32 = canvas.client_width() as f32;
+
     let vertices: Vec<f32> = vec![
         w as f32 - origin.0 + coords[0],
         -origin.1 + coords[1], // top right
@@ -559,6 +677,10 @@ pub fn draw_triangle_at_coords_optimized(
         -origin.0 + coords[0],
         -origin.1 + coords[1], // top left
     ];
+
+    let u_canvas_size = gl.get_uniform_location(program, "u_canvas_size").unwrap();
+
+    gl.uniform2f(Some(&u_canvas_size), canvas_w, canvas_h);
     
     
     gl.bind_buffer(
