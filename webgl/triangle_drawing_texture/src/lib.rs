@@ -11,10 +11,7 @@ use std::sync::{Arc, Mutex, OnceLock, RwLock};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::{closure::Closure, JsCast, JsValue};
 use wasm_bindgen_futures::{js_sys, JsFuture};
-use web_sys::{
-    console, HtmlCanvasElement, WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlShader,
-    WebGlTexture, WebSocket,
-};
+use web_sys::{console, HtmlCanvasElement, WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlShader, WebGlTexture, WebGlUniformLocation, WebSocket};
 use websocket::WSResponse;
 
 static COMPLETE_HASH_MAP: OnceLock<RwLock<NodeSH>> = OnceLock::new();
@@ -183,8 +180,8 @@ pub async unsafe fn main() {
         })
         .collect();
 
-    print(&format!("{:?}", coords));
-    print(&format!("{:?}", &coords[0..2]));
+    // print(&format!("{:?}", coords));
+    // print(&format!("{:?}", &coords[0..2]));
 
 
     // removes program above as the shader for instanced drawing is slightly different
@@ -272,13 +269,17 @@ pub async unsafe fn main() {
         }
 
 
-        if pct > 100.0 {
-            set_active_tex(&gl, WebGl2RenderingContext::TEXTURE0, &texture);
+        let u_texture = gl.get_uniform_location(&program, "u_image").unwrap();
+
+
+        if pct > 1.0 {
+            set_active_tex(&gl, WebGl2RenderingContext::TEXTURE0, &texture, &u_texture, 0);
+            msg_node.set_node_value(Some(&format!("{} {} {} {} t0", pct, WebGl2RenderingContext::ACTIVE_TEXTURE, WebGl2RenderingContext::TEXTURE0, WebGl2RenderingContext::TEXTURE1)));
         } else {
-            set_active_tex(&gl, WebGl2RenderingContext::TEXTURE1, &other_tex);
+            set_active_tex(&gl, WebGl2RenderingContext::TEXTURE1, &other_tex, &u_texture, 1);
+            msg_node.set_node_value(Some(&format!("{} {} {} {} t1", pct, WebGl2RenderingContext::ACTIVE_TEXTURE, WebGl2RenderingContext::TEXTURE0, WebGl2RenderingContext::TEXTURE1)));
         }
 
-        msg_node.set_node_value(Some(&format!("{} {}", pct, WebGl2RenderingContext::ACTIVE_TEXTURE)));
         let mut prefix = "SINGLE";
         if constants::INSTANCED_DRAW {
             prefix = "INSTANCED";
@@ -357,6 +358,8 @@ pub fn setup_instanced_program(gl: &WebGl2RenderingContext) -> WebGlProgram {
     link_program(&gl, &shader_v, &shader_f).unwrap()
 }
 
+/// This is test code to see if it causes lag- and it does!
+/// Doesn't cause memory leak though- not sure exactly how to recreate that
 pub fn upload_tex(gl: &WebGl2RenderingContext, tex: &WebGlTexture, w: u16, h: u16, bitmap: &[u8]) {
     // gl.active_texture(WebGl2RenderingContext::TEXTURE0);
     gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&tex));
@@ -416,6 +419,11 @@ pub fn setup_tex2(gl: &WebGl2RenderingContext) -> WebGlTexture {
     let tex = gl.create_texture().unwrap();
 
     gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&tex));
+    gl.tex_parameteri(
+        WebGl2RenderingContext::TEXTURE_2D,
+        WebGl2RenderingContext::TEXTURE_MIN_FILTER,
+        WebGl2RenderingContext::LINEAR as i32,
+    );
     gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
         constants::TARGET,
         constants::LEVEL,
@@ -432,12 +440,13 @@ pub fn setup_tex2(gl: &WebGl2RenderingContext) -> WebGlTexture {
     tex
 }
 
-pub fn set_active_tex(gl: &WebGl2RenderingContext, texture: u32, gl_tex: &WebGlTexture) {
+pub fn set_active_tex(gl: &WebGl2RenderingContext, texture: u32, gl_tex: &WebGlTexture, u_tex: &WebGlUniformLocation, u_val: i32) {
     gl.active_texture(texture);
     gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(gl_tex));
+
+    gl.uniform1i(Some(&u_tex), u_val);
 }
 
-/// This is test code to see if it causes lag- and it does!
 pub fn setup_all_buffers(
     gl: &WebGl2RenderingContext,
     program: &WebGlProgram,
