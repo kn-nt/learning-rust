@@ -17,6 +17,21 @@ use websocket::WSResponse;
 static COMPLETE_HASH_MAP: OnceLock<RwLock<NodeSH>> = OnceLock::new();
 
 /// See the latest draw_triangle function's docstring and comments for a (relatively) detailed line-by-line explanation
+/// 
+/// how this learning worked
+/// point of this was to learn how to draw different textures at the same time properly without reuploading texture to another texture object
+/// 
+/// main() is core of it all
+/// two sets of glsl scripts
+///     it is possible to have one and just have a condition to add instance positions but whatever
+/// code is able to do instanced draw vs single draw- just adjust the constants::INSTANCED_DRAW boolean
+/// 
+/// Important lessons
+///     Don't create or upload more texture objects than necessary
+///     Uniforms only need to be set once per program and don't need to be constantly set
+///     It is more efficient to pass quad coords via vertex buffer than uniforms ofc
+///     To use multiple textures, just create separate texture objects, when you need to use one or the other, 
+///         set active texture to TEXTURE0 (not sure why exactly since this should be default) and bind texture object
 #[wasm_bindgen(start)]
 pub async unsafe fn main() {
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
@@ -128,6 +143,7 @@ pub async unsafe fn main() {
     let f = Rc::new(RefCell::new(None));
     let g = f.clone();
 
+    //Set up bitmap once, save on compute time a bit
     let bitmap: Vec<u8>;
     let w: u16;
     let h: u16;
@@ -190,7 +206,13 @@ pub async unsafe fn main() {
         gl.delete_program(Some(&program));
         program = setup_instanced_program(&gl);
     }
+    
+    // All commonly used data is via setup_all_buffers
     let (buf_vert, texture) = setup_all_buffers(&gl, &program, w, h, &bitmap, origin);
+    
+    // this is just for the second texture to draw
+    // NOTE: currently the issue is not re-adjusting the vertex coordinates for quad size and this leads to compressing of this signboard image
+    // but again, whatever
     let buf_insta = setup_inst_buffer(&gl, &program, &coords);
 
     let other_tex = setup_tex2(&gl);
@@ -260,6 +282,7 @@ pub async unsafe fn main() {
             for i in 0..(500f32 * pct) as u32 {
                 draw_triangle_at_coords_optimized(&gl, &coords[(i as usize)..(i as usize)+2], &program, &buf_vert, w, h, origin);
                 // upload_tex(&gl, &texture, w, h, &bitmap);
+                
                 draw_calls += 1;
             }
             // for _ in 0..(250f32 * pct * 2f32) as u32 {
@@ -268,15 +291,12 @@ pub async unsafe fn main() {
             // }
         }
 
-
-        let u_texture = gl.get_uniform_location(&program, "u_image").unwrap();
-
-
+        
         if pct > 1.0 {
-            set_active_tex(&gl, WebGl2RenderingContext::TEXTURE0, &texture, &u_texture, 0);
+            set_active_tex(&gl, WebGl2RenderingContext::TEXTURE0, &texture);
             msg_node.set_node_value(Some(&format!("{} {} {} {} t0", pct, WebGl2RenderingContext::ACTIVE_TEXTURE, WebGl2RenderingContext::TEXTURE0, WebGl2RenderingContext::TEXTURE1)));
         } else {
-            set_active_tex(&gl, WebGl2RenderingContext::TEXTURE1, &other_tex, &u_texture, 1);
+            set_active_tex(&gl, WebGl2RenderingContext::TEXTURE0, &other_tex);
             msg_node.set_node_value(Some(&format!("{} {} {} {} t1", pct, WebGl2RenderingContext::ACTIVE_TEXTURE, WebGl2RenderingContext::TEXTURE0, WebGl2RenderingContext::TEXTURE1)));
         }
 
@@ -414,7 +434,7 @@ pub fn setup_tex2(gl: &WebGl2RenderingContext) -> WebGlTexture {
             panic!("Missing origin");
         }
     }
-    gl.active_texture(WebGl2RenderingContext::TEXTURE1);
+    gl.active_texture(WebGl2RenderingContext::TEXTURE0);
 
     let tex = gl.create_texture().unwrap();
 
@@ -440,11 +460,9 @@ pub fn setup_tex2(gl: &WebGl2RenderingContext) -> WebGlTexture {
     tex
 }
 
-pub fn set_active_tex(gl: &WebGl2RenderingContext, texture: u32, gl_tex: &WebGlTexture, u_tex: &WebGlUniformLocation, u_val: i32) {
+pub fn set_active_tex(gl: &WebGl2RenderingContext, texture: u32, gl_tex: &WebGlTexture) {
     gl.active_texture(texture);
     gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(gl_tex));
-
-    gl.uniform1i(Some(&u_tex), u_val);
 }
 
 pub fn setup_all_buffers(

@@ -13,4 +13,4 @@ pub const BORDER: i32 = 0;
 pub const SRC_FORMAT: u32 = WebGl2RenderingContext::RGBA;
 pub const SRC_TYPE: u32 = WebGl2RenderingContext::UNSIGNED_BYTE;
 
-pub const INSTANCED_DRAW: bool = true;
+pub const INSTANCED_DRAW: bool = false;
