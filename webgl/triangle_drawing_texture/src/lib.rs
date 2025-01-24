@@ -216,6 +216,7 @@ pub async unsafe fn main() {
     let buf_insta = setup_inst_buffer(&gl, &program, &coords);
 
     let other_tex = setup_tex2(&gl);
+    let other_tex2 = setup_tex3(&gl);
 
     // Below allows transparency to work
     // http://learnwebgl.brown37.net/11_advanced_rendering/alpha_blending.html
@@ -291,14 +292,18 @@ pub async unsafe fn main() {
             // }
         }
 
-        
-        if pct > 1.0 {
-            set_active_tex(&gl, WebGl2RenderingContext::TEXTURE0, &texture);
-            msg_node.set_node_value(Some(&format!("{} {} {} {} t0", pct, WebGl2RenderingContext::ACTIVE_TEXTURE, WebGl2RenderingContext::TEXTURE0, WebGl2RenderingContext::TEXTURE1)));
-        } else {
-            set_active_tex(&gl, WebGl2RenderingContext::TEXTURE0, &other_tex);
-            msg_node.set_node_value(Some(&format!("{} {} {} {} t1", pct, WebGl2RenderingContext::ACTIVE_TEXTURE, WebGl2RenderingContext::TEXTURE0, WebGl2RenderingContext::TEXTURE1)));
+        let mut text = "t0";
+        if pct > 1.3 {
+            set_active_tex(&gl, &texture);
+            text = "t0";
+        } else if pct > 1.0 {
+            set_active_tex(&gl, &other_tex);
+            text = "t1";
+        } else if pct > 0.7 {
+            set_active_tex(&gl, &other_tex2);
+            text = "t2";
         }
+        msg_node.set_node_value(Some(&format!("{} {}", pct, text)));
 
         let mut prefix = "SINGLE";
         if constants::INSTANCED_DRAW {
@@ -460,8 +465,71 @@ pub fn setup_tex2(gl: &WebGl2RenderingContext) -> WebGlTexture {
     tex
 }
 
-pub fn set_active_tex(gl: &WebGl2RenderingContext, texture: u32, gl_tex: &WebGlTexture) {
-    gl.active_texture(texture);
+pub fn setup_tex3(gl: &WebGl2RenderingContext) -> WebGlTexture {
+    let bitmap: Vec<u8>;
+    let w: u16;
+    let h: u16;
+    let mut origin: (f32, f32) = (0.0, 0.0);
+    let node = COMPLETE_HASH_MAP.get().unwrap().read().unwrap();
+    // print(&format!("{:?}", node.children["UI.nx"].children["MapLogin.img"].children.keys()));
+    // print(&format!("{:?}", node.children["Map.nx"].children["Obj"].children["login.img"].children["Title"].children["signboard"].children["0"].children.keys()));
+    let signboard_node = &node.children["Map.nx"].children["Obj"].children["login.img"].children
+        ["Title"]
+        .children["effect"]
+        .children["0"]
+        .children["0"];
+    match signboard_node.data {
+        NodeDataPopulated::Bitmap {
+            data: _,
+            width,
+            height,
+        } => {
+            bitmap = signboard_node.data.decompress().unwrap();
+            w = width.clone(); // 368 px
+            h = height.clone(); // 236 px
+        }
+        _ => {
+            panic!("Signboard node is not populated");
+        }
+    }
+
+    match signboard_node.children["origin"].data {
+        NodeDataPopulated::Vector(x, y) => {
+            origin.0 = x as f32;
+            origin.1 = y as f32;
+        }
+        _ => {
+            panic!("Missing origin");
+        }
+    }
+    gl.active_texture(WebGl2RenderingContext::TEXTURE0);
+
+    let tex = gl.create_texture().unwrap();
+
+    gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&tex));
+    gl.tex_parameteri(
+        WebGl2RenderingContext::TEXTURE_2D,
+        WebGl2RenderingContext::TEXTURE_MIN_FILTER,
+        WebGl2RenderingContext::LINEAR as i32,
+    );
+    gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
+        constants::TARGET,
+        constants::LEVEL,
+        constants::INTERNAL_FORMAT,
+        w as i32,
+        h as i32,
+        constants::BORDER,
+        constants::SRC_FORMAT,
+        constants::SRC_TYPE,
+        Some(&bitmap),
+    )
+        .expect("Cannot generate tex");
+
+    tex
+}
+
+pub fn set_active_tex(gl: &WebGl2RenderingContext, gl_tex: &WebGlTexture) {
+    gl.active_texture(WebGl2RenderingContext::TEXTURE0);
     gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(gl_tex));
 }
 
