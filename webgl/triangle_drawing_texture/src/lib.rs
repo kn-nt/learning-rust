@@ -185,7 +185,7 @@ pub async unsafe fn main() {
     let min = 1f32;
     let f_max = 2000f32;
     let mut bytes = [0u8; 1000 * 4]; // 500 f32 values, each 4 bytes
-    let mut bytes_smol = [0u8; 2 * 4]; // 500 f32 values, each 4 bytes
+    // let mut bytes = [0u8; 2 * 4]; // 500 f32 values, each 4 bytes
     getrandom(&mut bytes).expect("random number generation failed");
     let coords: Vec<f32> = bytes
         .chunks_exact(1) // Each chunk represents one f32 (4 bytes)
@@ -265,8 +265,13 @@ pub async unsafe fn main() {
                 .collect();
             // draw_triangle_at_coords_instanced(&gl, &program, &coords, origin, w, h, &bitmap);
 
-            draw_triangle_at_coords_instanced_optimized(&gl, &program, &coords, &buf_insta);
-            draw_calls += (coords.len() / 2usize) as u32;
+            // draw_triangle_at_coords_instanced_optimized(&gl, &program, &coords, &buf_insta);
+            // draw_calls += (coords.len() / 2usize) as u32;
+            
+            for i in 0..(500f32 * pct) as u32 {
+                draw_triangle_at_coords_instanced_optimized(&gl, &program, &coords[(i as usize)..(i as usize)+2], &buf_insta);
+                draw_calls += 1;
+            }
             
             // }
         } else {
@@ -921,15 +926,18 @@ pub fn draw_triangle_at_coords_instanced(
         WebGl2RenderingContext::STATIC_DRAW,
     );
     gl.enable_vertex_attrib_array(att_a_instance_position as u32);
+    // The below's stride isn't REALLY required because the data is tightly packed and  
+    // webgl already knows to increment by 2 * num of bytes per float because size = 2
     gl.vertex_attrib_pointer_with_i32(
         att_a_instance_position as u32,
-        2,
+        2, // tells webgl the number of attributes to use
         WebGl2RenderingContext::FLOAT,
         false,
-        2 * 4,
+        2 * 4, // this refers to the # of bytes to skip until the next attribute
         0,
     );
     // Tells WebGL to treat att_a_instance_position attribute as per-instance (6 vertices)
+    // the 6 vertices per instance is defined during the draw call count
     // so all points on a square (2 triangles) have this applied to it
     gl.vertex_attrib_divisor(att_a_instance_position as u32, 1);
 
