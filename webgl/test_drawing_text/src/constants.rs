@@ -1,6 +1,6 @@
 use web_sys::WebGl2RenderingContext;
 
-pub const WS_URL: &str = "wss://nx-hoster-sandbox.taco.kennysbasement.com/ws_deflated";
+pub const WS_URL: &str = "ws://nx-hoster-sandbox.taco.kennysbasement.com/ws";
 
 // Constants
 pub const FPS: u8 = 60u8;

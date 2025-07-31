@@ -1,0 +1,25 @@
+[package]
+name = "triangle_drawing"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+console_error_panic_hook = "0.1.7"
+wasm-bindgen = { version = "0.2.89", features = [] }
+wasm-bindgen-futures = "0.4.39"
+png = "0.17.16"
+wgpu = { version = "26.0.1", features = ["webgl", "webgpu", "wgsl"]}
+console_log = "1.0"
+log = "0.4"
+
+
+[dependencies.web-sys]
+version = "0.3.77"
+features = ["Document", "Element", "HtmlCanvasElement", "WebGlBuffer", "WebGlVertexArrayObject", "WebGl2RenderingContext", "WebGlProgram", "WebGlShader", "Window", "console", "Response", "WebGlUniformLocation", "WebGlTexture", "HtmlImageElement", "Performance", "BinaryType", "FileReader", "MessageEvent", "ProgressEvent", "WebSocket", "HtmlAudioElement", "Text", "KeyboardEvent", "MouseEvent", "FocusEvent", "CssStyleDeclaration", "Navigator", "Gpu"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+
+[package.metadata.wasm-pack.profile.profiling]
+wasm-opt = false
