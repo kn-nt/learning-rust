@@ -11,6 +11,8 @@ png = "0.17.16"
 wgpu = { version = "26.0.1", features = ["webgl", "webgpu", "wgsl"]}
 console_log = "1.0"
 log = "0.4"
+futures-intrusive = "0.5.0"
+bytemuck = "1.23.1"
 
 
 [dependencies.web-sys]
