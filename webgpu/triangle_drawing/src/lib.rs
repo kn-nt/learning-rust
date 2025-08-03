@@ -11,6 +11,27 @@ use wasm_bindgen_futures::js_sys;
 use wgpu::{BindGroupEntry, BindingResource, BufferBinding, ColorTargetState, ComputePassDescriptor, FragmentState, Label, LoadOp, Operations, PipelineLayout, RenderPassColorAttachment, ShaderSource, StoreOp, VertexState};
 use bytemuck::cast_slice;
 
+/// # Steps for webgpu
+/// ## General Setup
+/// - Create canvas -> generate surface from canvas
+/// - Create adapter -> use it to get device & queue
+///     - Adapter is abstraction to represent physical or virtual GPU
+///     - Configure surface
+/// ## Shaders
+/// - Create shader source -> module
+/// - Create pipeline layout -> use for render pipeline
+///     - Pipeline Layout is for defining how shaders access resources
+///     - Render Pipeline defines which shaders, resources, data, etc. to use and how to output data
+/// ## Render
+/// - Create render pass descriptor
+///     - Render Pass Descriptor describes how one Render Pass should work
+///         - Render Pass is a batch of drawing commands
+/// - Create encoder
+///     - Encoder records GPU commands into a command buffer for the GPU to queue and work on
+/// ## Drawing
+/// - Using Render Pass, set pipeline & issue draw command
+/// ## Submit
+/// - Submit work using queue
 #[wasm_bindgen(start)]
 async fn main() {
     console_error_panic_hook::set_once();
@@ -91,7 +112,7 @@ async fn main() {
         push_constant_ranges: &[],
     });
 
-    let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+    let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Label::from("hardcoded red triangle pipeline"),
         layout: Some(&pipeline_layout),
         vertex: VertexState {
@@ -149,7 +170,7 @@ async fn main() {
     // need this in separate brackets so pass: RenderPass will be dropped afterward as we need to use encoder again
     {
         let mut pass = encoder.begin_render_pass(&render_pass_desc);
-        pass.set_pipeline(&pipeline);
+        pass.set_pipeline(&render_pipeline);
         pass.draw(0..3, 0..1);
     }
 
