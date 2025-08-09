@@ -39,3 +39,21 @@ pub fn error(s: &str) {
 }
 
 pub fn now() -> f32 { window().performance().unwrap().now() as f32 }
+
+pub async fn read_buffer(buffer: &wgpu::Buffer, size: usize) -> Vec<u8> {
+    use wgpu::{Buffer, MapMode};
+    use futures_intrusive::channel::shared::oneshot_channel;
+    let slice = buffer.slice(..);
+    let (sender, receiver) = oneshot_channel();
+
+    slice.map_async(MapMode::Read, move |result| {
+        sender.send(result).unwrap();
+    });
+
+    receiver.receive().await.unwrap().unwrap();
+
+    let data = slice.get_mapped_range().to_vec();
+
+    buffer.unmap(); // always unmap after reading
+    data
+}
