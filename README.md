@@ -48,6 +48,20 @@ ssh-add
 # enable ps scripts in windows
 ```
 
+#### Speeding up Build Times
+Speeding up wasm-pack builds by disbaling wasm-opt (this will create larger wasm files but doesn't matter for dev)
+Add to Cargo.toml
+```toml
+[package.metadata.wasm-pack.profile.profiling]
+wasm-opt = false
+```
+
+and use following command with wasm-pack
+```
+wasm-pack build --target web --profiling
+```
+
+
 ### Traits
 #### Derive vs Impl traits  
 https://stackoverflow.com/questions/64393455/what-is-difference-between-derive-attribute-and-implementing-traits-for-structur  
