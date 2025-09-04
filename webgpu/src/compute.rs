@@ -2,7 +2,9 @@ use bytemuck::cast_slice;
 use wgpu::{BindGroupEntry, BindingResource, BufferBinding, ComputePassDescriptor, Label, ShaderSource};
 use crate::misc;
 
-pub async fn compute_test(device: &wgpu::Device, queue: &wgpu::Queue) {
+/// Multiplies vec of floats by 2  
+/// This is an async function because reading from GPU is an async operation
+pub async fn multiply_vec_by_two(device: &wgpu::Device, queue: &wgpu::Queue) {
     let compute_shader_source = r#"@group(0) @binding(0) var<storage, read_write> data: array<f32>;
       @compute @workgroup_size(1) fn computeSomething(
         @builtin(global_invocation_id) id: vec3u

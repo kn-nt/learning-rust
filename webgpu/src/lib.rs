@@ -2,15 +2,13 @@ mod misc;
 mod constants;
 mod generic_helpers;
 mod triangle_drawing;
-mod compute_test;
+mod compute;
+mod helpers;
 
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
-use web_sys::{console, HtmlCanvasElement};
+use web_sys::{HtmlCanvasElement};
 use wasm_bindgen::JsCast;
-use wgpu::{BindGroupEntry, BindingResource, BufferBinding, ColorTargetState, ComputePassDescriptor, FragmentState, Label, LoadOp, Operations, PipelineLayout, RenderPassColorAttachment, ShaderSource, StoreOp, VertexState};
-use crate::compute_test::compute_test;
-use crate::triangle_drawing::draw_triangle;
 
 /// # Steps for webgpu
 /// ## General Setup
@@ -57,17 +55,6 @@ async fn main() {
 
     let (device, queue) = adapter.request_device(&Default::default()).await.expect("Failed to request GPU device");
 
-    // debug(&format!("{:?}", device));
-    // debug(&format!("{:?}", device.features()));
-    // debug(&format!("{:?}", device.features().features_webgpu));
-    // debug(&format!("{:?}", device.features().features_wgpu));
-    // debug(&format!("{:?}", adapter.get_info()));
-
-    // log::info!("{:?}", adapter.get_info());
-
-    let navigator = web_sys::window().unwrap().navigator();
-    // log::info!("{:?}", device.);
-
     let surface_caps = surface.get_capabilities(&adapter);
     let format = surface_caps.formats[0];
 
@@ -82,8 +69,16 @@ async fn main() {
         view_formats: vec![],
     });
 
-    draw_triangle(&device, &queue, &surface, &adapter).await;
-    compute_test(&device, &queue).await;
+    let surface_caps = surface.get_capabilities(&adapter);
+    let format = surface_caps.formats[0];
+
+    let draw_tri = triangle_drawing::DrawTriangle::new(&device, &queue, &surface, &format);
+
+    // compute::multiply_vec_by_two(&device, &queue).await;
+
+    // draw_tri.draw_triangle();
+    // draw_tri.draw_rainbow_triangle();
+    draw_tri.draw_triangles_with_input();
 
 
     // log::info!("{:?}", format);
