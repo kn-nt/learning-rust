@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+    <link rel="stylesheet" href="index.css" />
+    <title></title>
+  </head>
+
+  <body>
+    <canvas id="canvas" style="background-color: black"></canvas>
+    <div id="overlay">
+      <div>FPS: <span id="fps"></span></div>
+      <div>Frame Time: <span id="frame_time"></span></div>
+      <div>Draw Calls: <span id="draw_calls"></span></div>
+      <div>Canvas Size: <span id="canvas_size"></span></div>
+      <div>Input: <span id="input"></span></div>
+      <div>Msg: <span id="msg"></span></div>
+    </div>
+    <script type="module">
+      import init from "./pkg/webgl.js";
+
+      await init();
+    </script>
+  </body>
+</html>

@@ -223,16 +223,8 @@ impl<'a> DrawTriangle<'a> {
     }
 
 
-    pub fn draw_triangles_with_input(&self) {
+    pub fn draw_triangles_with_input(&self, vertex_data: &[f32]) {
         // remember to declare as f32s as buffer is expecting that amount of data
-        let vertex_data: Vec<f32> = vec![
-            0.0,  0.5,  // top center
-            -0.5, -0.5,  // bottom left
-            0.5, -0.5,  // bottom right
-            0.5,  0.5,  // top center
-            0.5,  0.0,  // bottom left
-            1.0,  0.0   // bottom right
-        ];
 
         let shader_source = r#"
         struct VSOutput {
@@ -331,12 +323,15 @@ impl<'a> DrawTriangle<'a> {
                 depth_slice: None,
                 resolve_target: None,
                 ops: Operations {
-                    load: LoadOp::Clear(wgpu::Color {
-                        r: 0.0,
-                        g: 0.0,
-                        b: 0.0,
-                        a: 1.0,
-                    }),
+                    // this describes whether to clear the attachment
+                    load: LoadOp::Load,
+
+                    // LoadOp::Clear(wgpu::Color {
+                    //     r: 0.0,
+                    //     g: 0.0,
+                    //     b: 0.0,
+                    //     a: 1.0,
+                    // }),
                     store: StoreOp::Store,
                 },
             })],
@@ -354,7 +349,7 @@ impl<'a> DrawTriangle<'a> {
             let mut pass = encoder.begin_render_pass(&render_pass_desc);
             pass.set_pipeline(&render_pipeline);
             pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-            pass.draw(0..6, 0..1);
+            pass.draw(0..(vertex_data.len()/ 2) as u32, 0..1);
         }
 
         self.queue.submit(Some(encoder.finish()));

@@ -78,7 +78,22 @@ async fn main() {
 
     // draw_tri.draw_triangle();
     // draw_tri.draw_rainbow_triangle();
-    draw_tri.draw_triangles_with_input();
+
+    let vertex_data: Vec<f32> = vec![
+        0.0,  0.5,  // top center
+        -0.5, -0.5,  // bottom left
+        0.5, -0.5,  // bottom right
+        0.5,  0.5,  // top center
+        0.5,  0.0,  // bottom left
+        1.0,  0.0   // bottom right
+    ];
+    draw_tri.draw_triangles_with_input(&vertex_data);
+    let vertex_data: Vec<f32> = vec![
+        -0.5,  0.5,  // top center
+        -0.5, 0.0,  // bottom left
+        -1.0, 0.0,  // bottom right
+    ];
+    draw_tri.draw_triangles_with_input(&vertex_data);
 
 
     // log::info!("{:?}", format);
