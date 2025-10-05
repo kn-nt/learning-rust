@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use wasm_bindgen::JsCast;
-use web_sys::{HtmlCanvasElement, WebGl2RenderingContext, WebGlBuffer, WebGlProgram, console, WebGlVertexArrayObject};
-use crate::{constants, create_shader, input, link_program, misc, window, DebugStats};
+use web_sys::{HtmlCanvasElement, WebGl2RenderingContext, WebGlBuffer, WebGlProgram, console, WebGlVertexArrayObject, WebGlShader};
+use crate::{constants, input, misc};
 
 pub(crate) struct ApplicationState {
     pub pressed_keys: Arc<Mutex<HashMap<String, f32>>>,
@@ -24,7 +24,7 @@ pub(crate) struct ApplicationState {
 
 impl ApplicationState {
     pub fn new() -> Self {
-        let document = window().document().unwrap();
+        let document = misc::window().document().unwrap();
         let canvas = document
             .get_element_by_id("canvas")
             .unwrap()
@@ -369,7 +369,8 @@ impl ApplicationState {
                 );
             }
             // misc::log(&format!("loop count: {:?}", loop_counts));
-            misc::log(&format!("vert: {:?} {}", vertices, vertices.len()));
+            // misc::log(&format!("vert: {:?} {}", vertices, vertices.len()));
+            misc::log(&format!("total triangles: {}", vertices.len()/ 2));
         }
         let gl = &self.gl;
         gl.bind_vertex_array(self.vao_vertex.as_ref());
@@ -445,6 +446,133 @@ fn calc_triangle(full_verts: &mut Vec<f32>, triangle: Vec<f32>) {
     if unit_size > 0.01 {
         calc_triangle(full_verts, new_triangle_0_1);
         calc_triangle(full_verts, new_triangle_1_2);
-        calc_triangle(full_verts, new_triangle_2_0.clone());
+        calc_triangle(full_verts, new_triangle_2_0);
+    }
+}
+
+fn create_shader(
+    gl: &WebGl2RenderingContext,
+    shader_type: u32,
+    glsl: &str,
+) -> Result<WebGlShader, String> {
+    let shader = gl.create_shader(shader_type).unwrap();
+    gl.shader_source(&shader, glsl);
+    gl.compile_shader(&shader);
+    if gl
+        .get_shader_parameter(&shader, WebGl2RenderingContext::COMPILE_STATUS)
+        .as_bool()
+        .unwrap_or(false)
+    {
+        Ok(shader)
+    } else {
+        Err(gl
+            .get_shader_info_log(&shader)
+            .unwrap_or_else(|| String::from("Unknown error creating shader")))
+    }
+}
+
+fn link_program(
+    gl: &WebGl2RenderingContext,
+    vert_shader: &WebGlShader,
+    frag_shader: &WebGlShader,
+) -> Result<WebGlProgram, String> {
+    let program = gl
+        .create_program()
+        .ok_or_else(|| String::from("Unable to create program object"))
+        .unwrap();
+
+    gl.attach_shader(&program, &vert_shader);
+    gl.attach_shader(&program, &frag_shader);
+    gl.link_program(&program);
+
+    if gl
+        .get_program_parameter(&program, WebGl2RenderingContext::LINK_STATUS)
+        .as_bool()
+        .unwrap_or(false)
+    {
+        Ok(program)
+    } else {
+        Err(gl
+            .get_program_info_log(&program)
+            .unwrap_or_else(|| String::from("Unknown error creating program object")))
+    }
+}
+
+
+pub struct DebugStats {
+    pub fps_timing: VecDeque<f32>,
+    pub frame_time: f32,
+    pub draw_calls: u16,
+    pub draw_calls_instanced: u16,
+    pub draw_calls_single: u16,
+    pub canvas_size: (u16, u16),
+
+    pub hashmap_node: HashMap<String, web_sys::Node>,
+}
+
+impl DebugStats {
+    pub fn new() -> DebugStats {
+        DebugStats {
+            fps_timing: VecDeque::new(),
+            frame_time: 0.0,
+            draw_calls: 0,
+            draw_calls_instanced: 0,
+            draw_calls_single: 0,
+            canvas_size: (0, 0),
+            hashmap_node: HashMap::new(),
+        }
+    }
+
+    pub fn add_draw_call(&mut self, draws: Option<u16>) {
+        match draws {
+            None => self.draw_calls += 1,
+            Some(draws) => {
+                if draws > 0 {
+                    self.draw_calls += draws
+                }
+            }
+        }
+    }
+
+    pub fn add_debug_node(&mut self, name: &str, value: web_sys::Node) {
+        self.hashmap_node.insert(name.to_string(), value);
+    }
+
+    pub fn set_node_val(&self, node: &str, value: &str) {
+        if let Some(node) = self.hashmap_node.get(node) {
+            node.set_text_content(Some(value));
+        }
+    }
+
+    pub fn init(&mut self) {
+        self.create_node("fps");
+        self.create_node("frame_time");
+        self.create_node("draw_calls");
+        self.create_node("canvas_size");
+        self.create_node("input");
+        self.create_node("msg");
+    }
+
+    pub fn set_debug_msg(&self, msg: &str) {
+        self.set_node_val("msg", msg);
+    }
+
+    pub fn create_node(&mut self, name: &str) {
+        let doc = gloo_utils::document();
+        let ele = doc
+            .query_selector(&format!("#{}", name))
+            .expect(&format!("Node #{} does not exist", name))
+            .expect(&format!("Node #{} does not exist", name));
+        let text = doc.create_text_node("");
+        let node = ele.append_child(&**text).unwrap();
+        self.hashmap_node.insert(name.to_string(), node);
+    }
+
+    pub fn calculate_frame_time(&mut self) {
+        self.frame_time = 0.0;
+        if self.fps_timing.len() > 1 {
+            let idx = self.fps_timing.len() - 1;
+            self.frame_time = self.fps_timing[idx] - self.fps_timing[idx - 1];
+        }
     }
 }
