@@ -1,0 +1,15 @@
+{
+  "name": "webgpu",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "webgpu_bg.wasm",
+    "webgpu.js",
+    "webgpu.d.ts"
+  ],
+  "main": "webgpu.js",
+  "types": "webgpu.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
