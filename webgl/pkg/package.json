@@ -1,0 +1,20 @@
+{
+  "name": "webgl",
+  "type": "module",
+  "description": "Testing WebGL to build proficiency",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kn-nt/learning-rust"
+  },
+  "files": [
+    "webgl_bg.wasm",
+    "webgl.js",
+    "webgl.d.ts"
+  ],
+  "main": "webgl.js",
+  "types": "webgl.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
