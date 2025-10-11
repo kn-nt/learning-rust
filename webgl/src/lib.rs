@@ -3,6 +3,7 @@ mod misc;
 mod websocket;
 mod input;
 mod app_state;
+mod triangle_drawing;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -19,25 +20,21 @@ pub fn main() {
 
     let f = Rc::new(RefCell::new(None));
     let g = f.clone();
+    
 
-    // Lessons learned so far
-    // Make sure to not constantly upload textures to buffer otherwise you run into memory issues
-    //      VRAM was full -> spilled into RAM
-    // Make sure to set uniform calls before draw every time or at least once per draw time
-    //      It is set up per program and doesn't change by default
     *g.borrow_mut() = Some(Closure::new(move || {
         app_state.set_debug_stats();
         app_state.reset_canvas();
         app_state.handle_input();
 
         match app_state.draw_setting {
-            0 => app_state.draw_triangle(),
-            1 => app_state.draw_triangle_vao(),
-            2 => app_state.draw_sierpinski_simple_tri(),
+            0 => app_state.triangle_drawing.draw_triangle(),
+            1 => app_state.triangle_drawing.draw_tri_vao(),
+            2 => app_state.triangle_drawing.draw_sierpinski_tri_simple(),
+            3 => app_state.triangle_drawing.draw_tri_random(),
             _ => {},
         };
 
-        // draw_triangle_at_coords_instanced(&gl, &program_i, &[0.0, 0.0, 400.0, 400.0, 500.0, 200.0]);
         request_animation_frame(f.borrow().as_ref().unwrap());
     }));
 

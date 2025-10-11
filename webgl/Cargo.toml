@@ -3,6 +3,9 @@ name = "webgl"
 version = "0.1.0"
 edition = "2021"
 
+description = "Testing WebGL to build proficiency"
+repository = "https://github.com/kn-nt/learning-rust"
+
 [dependencies]
 console_error_panic_hook = "0.1.7"
 nx = { git = "ssh://git@github.com/ChWeTa/nx.git", version = "0.1.0", branch = "WebSockets" }

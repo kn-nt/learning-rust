@@ -15,3 +15,5 @@ pub const SRC_TYPE: u32 = WebGl2RenderingContext::UNSIGNED_BYTE;
 
 pub const INSTANCED_DRAW: bool = false;
 pub const KEY_ACTIVATION_DELAY: f32 = 15f32;
+
+pub const DEFAULT_DRAW_SETTING: u8 = 3;
