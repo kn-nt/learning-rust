@@ -1,5 +1,10 @@
 # learning-rust
 
+### Try It Out
+[WebGL](https://kn-nt.github.io/learning-rust/webgl/index.html)  
+[WebGPU](https://kn-nt.github.io/learning-rust/webgpu/index.html)  
+
+
 ### QoL
 #### Cargo Watch
 ```powershell
